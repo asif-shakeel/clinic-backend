@@ -24,9 +24,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["POST"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 DATA_DIR = "/tmp/data"
 OUT_DIR = "/tmp/output"
