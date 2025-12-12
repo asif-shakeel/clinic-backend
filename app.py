@@ -5,6 +5,8 @@ from fastapi import FastAPI, UploadFile, File
 from analysis_engine import run_analysis
 from b2_storage import upload_file, download_file
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Depends
+from auth import get_user_id
 
 
 app = FastAPI()
@@ -32,7 +34,10 @@ os.makedirs(OUT_DIR, exist_ok=True)
 
 
 @app.post("/upload")
-def upload_csv(file: UploadFile = File(...)):
+def upload_csv(
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_user_id)
+):
     local_path = f"/tmp/{file.filename}"
 
     with open(local_path, "wb") as buffer:
@@ -44,7 +49,11 @@ def upload_csv(file: UploadFile = File(...)):
 
 
 @app.post("/analyze")
-def analyze(start_date: str = None, end_date: str = None):
+def analyze(
+    start_date: str = None,
+    end_date: str = None,
+    user_id: str = Depends(get_user_id)
+):
     for name in ["patients.csv", "visits.csv", "metrics.csv"]:
         download_file(f"raw/{name}", f"{DATA_DIR}/{name}")
 
