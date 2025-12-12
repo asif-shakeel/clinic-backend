@@ -6,7 +6,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 security = HTTPBearer()
 
 SUPABASE_JWT_SECRET = os.environ["SUPABASE_JWT_SECRET"]
-ALGORITHM = "HS256"
+SUPABASE_ISSUER = "https://oemlaccyxsxmhawgvzfg.supabase.co/auth/v1"
 
 
 def get_user_id(
@@ -14,7 +14,17 @@ def get_user_id(
 ):
     try:
         token = creds.credentials
-        payload = jwt.decode(token, SUPABASE_JWT_SECRET, algorithms=[ALGORITHM])
+
+        payload = jwt.decode(
+            token,
+            SUPABASE_JWT_SECRET,
+            algorithms=["HS256"],
+            audience="authenticated",
+            issuer=SUPABASE_ISSUER,
+        )
+
         return payload["sub"]
-    except Exception:
+
+    except Exception as e:
+        print("JWT ERROR:", repr(e))
         raise HTTPException(status_code=401, detail="Invalid token")
