@@ -4,9 +4,25 @@ from fastapi import FastAPI, UploadFile, File
 
 from analysis_engine import run_analysis
 from b2_storage import upload_file, download_file
+from fastapi.middleware.cors import CORSMiddleware
 
 
 app = FastAPI()
+
+ALLOWED_ORIGINS = [
+    "https://incidentreportshub.com",
+    "https://www.incidentreportshub.com",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["POST"],
+    allow_headers=["*"],
+)
 
 DATA_DIR = "/tmp/data"
 OUT_DIR = "/tmp/output"
