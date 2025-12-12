@@ -6,3 +6,4 @@ scipy
 boto3
 python-multipart
 python-jose 
+supabase
