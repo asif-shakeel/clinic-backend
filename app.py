@@ -67,12 +67,16 @@ def analyze(
     job_id = job.data[0]["id"]
 
     try:
-
         # clean output dir per job
         for f in os.listdir(OUT_DIR):
             os.remove(os.path.join(OUT_DIR, f))
 
-        # 2. run analysis
+        # ensure inputs exist locally
+        os.makedirs(DATA_DIR, exist_ok=True)
+        for fname in ["patients.csv", "visits.csv", "metrics.csv"]:
+            download_file(f"raw/{fname}", os.path.join(DATA_DIR, fname))
+
+        # run analysis ONCE
         run_analysis(
             DATA_DIR,
             OUT_DIR,
@@ -80,43 +84,25 @@ def analyze(
             end_date=end_date,
         )
 
-
-
+        # upload results
         job_prefix = f"results/{job_id}"
-
         uploaded_files = []
 
         for fname in os.listdir(OUT_DIR):
-            local_path = os.path.join(OUT_DIR, fname)
-            remote_path = f"{job_prefix}/{fname}"
+            upload_file(
+                os.path.join(OUT_DIR, fname),
+                f"{job_prefix}/{fname}",
+            )
+            uploaded_files.append(fname)
 
-            upload_file(local_path, remote_path)
-            uploaded_files.append(remote_path)
-
-        download_urls = {
-            os.path.basename(p): generate_signed_url(p)
-            for p in uploaded_files
-        }
-
-        # 3. mark complete
+        # mark complete
         supabase.table("analysis_jobs").update({
             "status": "completed",
             "finished_at": datetime.utcnow().isoformat(),
-            "result_files": list(download_urls.keys()),
+            "result_files": uploaded_files,
         }).eq("id", job_id).execute()
 
-
-
-        return {
-            "job_id": job_id,
-            "downloads": download_urls,
-        }
-
-
-        # return {
-        #     "job_id": job_id,
-        #     "result": result,
-        # }
+        return {"job_id": job_id}
 
     except Exception as e:
         # 4. mark failed
@@ -166,3 +152,4 @@ def download_result(
 
     path = f"results/{job_id}/{filename}"
     return {"url": generate_signed_url(path)}
+
