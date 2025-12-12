@@ -3,11 +3,13 @@ import shutil
 from fastapi import FastAPI, UploadFile, File
 
 from analysis_engine import run_analysis
-from b2_storage import upload_file, download_file
+from b2_storage import upload_file, download_file, generate_signed_url
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Depends
 from auth import get_user_id
-
+from supabase_client import supabase
+from datetime import datetime
+from fastapi import HTTPException
 
 app = FastAPI()
 
@@ -52,14 +54,115 @@ def upload_csv(
 def analyze(
     start_date: str = None,
     end_date: str = None,
-    user_id: str = Depends(get_user_id)
+    user_id: str = Depends(get_user_id),
 ):
-    for name in ["patients.csv", "visits.csv", "metrics.csv"]:
-        download_file(f"raw/{name}", f"{DATA_DIR}/{name}")
+    # 1. create job
+    job = supabase.table("analysis_jobs").insert({
+        "user_id": user_id,
+        "status": "running",
+        "start_date": start_date,
+        "end_date": end_date,
+    }).execute()
 
-    return run_analysis(
-        DATA_DIR,
-        OUT_DIR,
-        start_date=start_date,
-        end_date=end_date
+    job_id = job.data[0]["id"]
+
+    try:
+
+        # clean output dir per job
+        for f in os.listdir(OUT_DIR):
+            os.remove(os.path.join(OUT_DIR, f))
+
+        # 2. run analysis
+        run_analysis(
+            DATA_DIR,
+            OUT_DIR,
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+
+
+        job_prefix = f"results/{job_id}"
+
+        uploaded_files = []
+
+        for fname in os.listdir(OUT_DIR):
+            local_path = os.path.join(OUT_DIR, fname)
+            remote_path = f"{job_prefix}/{fname}"
+
+            upload_file(local_path, remote_path)
+            uploaded_files.append(remote_path)
+
+        download_urls = {
+            os.path.basename(p): generate_signed_url(p)
+            for p in uploaded_files
+        }
+
+        # 3. mark complete
+        supabase.table("analysis_jobs").update({
+            "status": "completed",
+            "finished_at": datetime.utcnow().isoformat(),
+            "result_files": list(download_urls.keys()),
+        }).eq("id", job_id).execute()
+
+
+
+        return {
+            "job_id": job_id,
+            "downloads": download_urls,
+        }
+
+
+        # return {
+        #     "job_id": job_id,
+        #     "result": result,
+        # }
+
+    except Exception as e:
+        # 4. mark failed
+        supabase.table("analysis_jobs").update({
+            "status": "failed",
+            "error": str(e),
+            "finished_at": datetime.utcnow().isoformat(),
+        }).eq("id", job_id).execute()
+
+        raise
+
+
+
+@app.get("/jobs")
+def list_jobs(user_id: str = Depends(get_user_id)):
+    res = (
+        supabase
+        .table("analysis_jobs")
+        .select(
+            "id,status,start_date,end_date,created_at,finished_at,error,result_files"
+        )
+        .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .execute()
     )
+
+    return res.data
+
+@app.get("/jobs/{job_id}/download/{filename}")
+def download_result(
+    job_id: str,
+    filename: str,
+    user_id: str = Depends(get_user_id),
+):
+    # ownership check
+    job = (
+        supabase.table("analysis_jobs")
+        .select("id")
+        .eq("id", job_id)
+        .eq("user_id", user_id)
+        .single()
+        .execute()
+    )
+
+    if not job.data:
+        raise HTTPException(status_code=404)
+
+    path = f"results/{job_id}/{filename}"
+    return {"url": generate_signed_url(path)}

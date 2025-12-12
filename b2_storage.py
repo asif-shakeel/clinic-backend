@@ -18,3 +18,10 @@ def upload_file(local_path, remote_path):
 
 def download_file(remote_path, local_path):
     s3.download_file(BUCKET, remote_path, local_path)
+
+def generate_signed_url(remote_path, expires_in=3600):
+    return s3.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": BUCKET, "Key": remote_path},
+        ExpiresIn=expires_in,
+    )
