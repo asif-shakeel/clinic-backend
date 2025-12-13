@@ -10,6 +10,10 @@ from auth import get_user_id
 from supabase_client import supabase
 from datetime import datetime
 from fastapi import HTTPException
+import pandas as pd
+from analysis_registry import ANALYSES
+
+
 
 app = FastAPI()
 
@@ -38,25 +42,64 @@ os.makedirs(OUT_DIR, exist_ok=True)
 
 @app.post("/upload")
 def upload_csv(
+    analysis_key: str,
+    file_role: str,
     file: UploadFile = File(...),
-    user_id: str = Depends(get_user_id)
+    user_id: str = Depends(get_user_id),
 ):
-    local_path = f"/tmp/{file.filename}"
+    # 1. validate analysis
+    if analysis_key not in ANALYSES:
+        raise HTTPException(status_code=400, detail="Unknown analysis")
 
-    with open(local_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    analysis = ANALYSES[analysis_key]
 
-    upload_file(local_path, f"raw/{file.filename}")
+    # 2. validate file role
+    if file_role not in analysis["files"]:
+        raise HTTPException(status_code=400, detail="Invalid file role")
 
-    return {"status": "uploaded", "filename": file.filename}
+    # 3. read csv + normalize columns
+    df = pd.read_csv(file.file)
+    df.columns = [c.lower() for c in df.columns]
+
+    # 4. validate required columns
+    required = [
+        c.lower()
+        for c in analysis["files"][file_role]["required_columns"]
+    ]
+
+    missing = [c for c in required if c not in df.columns]
+
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Missing required columns: {missing}",
+        )
+
+    # 5. save normalized csv
+    os.makedirs("/tmp", exist_ok=True)
+    tmp_path = f"/tmp/{file_role}.csv"
+    df.to_csv(tmp_path, index=False)
+
+    # 6. upload to storage
+    remote_path = f"raw/{user_id}/{analysis_key}/{file_role}.csv"
+    upload_file(tmp_path, remote_path)
+
+    return {
+        "status": "uploaded",
+        "analysis": analysis_key,
+        "file_role": file_role,
+    }
+
 
 
 @app.post("/analyze")
 def analyze(
+    analysis_key: str,
     start_date: str = None,
     end_date: str = None,
     user_id: str = Depends(get_user_id),
 ):
+
     # 1. create job
     job = supabase.table("analysis_jobs").insert({
         "user_id": user_id,
@@ -67,6 +110,11 @@ def analyze(
 
     job_id = job.data[0]["id"]
 
+    if analysis_key not in ANALYSES:
+        raise HTTPException(status_code=400, detail="Unknown analysis")
+
+    analysis = ANALYSES[analysis_key]
+
     try:
         # clean output dir per job
         for f in os.listdir(OUT_DIR):
@@ -74,8 +122,40 @@ def analyze(
 
         # ensure inputs exist locally
         os.makedirs(DATA_DIR, exist_ok=True)
-        for fname in ["patients.csv", "visits.csv", "metrics.csv"]:
-            download_file(f"raw/{fname}", os.path.join(DATA_DIR, fname))
+
+        required_files = [
+            f"{role}.csv"
+            for role in ANALYSES[analysis_key]["files"].keys()
+        ]
+
+
+        if not required_files:
+            raise HTTPException(status_code=400, detail="Unknown analysis type")
+
+        missing = []
+
+        for fname in required_files:
+            try:
+                download_file(
+                    f"raw/{user_id}/{analysis_key}/{fname}",
+                    os.path.join(DATA_DIR, fname),
+                )
+            except Exception:
+                missing.append(fname)
+
+        if missing:
+            supabase.table("analysis_jobs").update({
+                "status": "failed",
+                "error": f"Missing required files: {', '.join(missing)}",
+                "finished_at": datetime.utcnow().isoformat(),
+            }).eq("id", job_id).execute()
+
+            return {
+                "job_id": job_id,
+                "error": f"Missing required files: {', '.join(missing)}",
+            }
+
+
 
         # run analysis ONCE
         run_analysis(
