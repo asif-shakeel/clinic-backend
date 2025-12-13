@@ -312,3 +312,28 @@ def list_files(user_id: str = Depends(get_user_id)):
         .execute()
     )
     return res.data
+
+
+
+@app.post("/upload_file")
+def upload_file_generic(
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_user_id),
+):
+    df = pd.read_csv(file.file)
+    df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
+
+    tmp_path = f"/tmp/{file.filename}"
+    df.to_csv(tmp_path, index=False)
+
+    storage_path = f"raw/{user_id}/files/{file.filename}"
+    upload_file(tmp_path, storage_path)
+
+    supabase.table("user_files").insert({
+        "user_id": user_id,
+        "filename": file.filename,
+        "storage_path": storage_path,
+        "detected_columns": list(df.columns),
+    }).execute()
+
+    return {"status": "uploaded"}
