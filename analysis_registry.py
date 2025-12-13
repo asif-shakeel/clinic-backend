@@ -6,8 +6,8 @@ ANALYSES = {
         "files": {
             "patients": {
                 "required_columns": [
-                    "patient_id",
-                    "insurance",
+                    "PatientID",
+                    "zip",
                     "dob",
                     "city",
                     "state",
@@ -15,17 +15,19 @@ ANALYSES = {
             },
             "visits": {
                 "required_columns": [
-                    "patient_id",
-                    "visit_date",
-                    "service_charge",
+                    "patientid",
+                    "visitdate",
+                    "service",
+                   "servicecharge",
+                   "serviceduration",
                 ]
             },
             "metrics": {
                 "required_columns": [
-                    "patient_id",
-                    "metric_date",
-                    "pain_score",
-                    "mobility_score",
+                    "patientid",
+                    "metricdate",
+                    "painscore",
+                    "mobilityscore",
                 ]
             },
         }
