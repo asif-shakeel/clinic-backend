@@ -92,10 +92,23 @@ def upload_csv(
         "detected_columns": list(df.columns),
     }).execute()
 
+    result = supabase.table("user_files").insert({
+        "user_id": user_id,
+        "filename": file.filename or "uploaded.csv",
+        "storage_path": remote_path,
+        "detected_columns": list(df.columns),
+    }).execute()
+
+    if not result.data:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to record uploaded file"
+        )
+
     return {
         "status": "uploaded",
-        "analysis": analysis_key,
-        "file_role": file_role,
+        "file_id": result.data[0]["id"],
+        "filename": file.filename,
     }
 
 
