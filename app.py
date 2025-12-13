@@ -48,6 +48,8 @@ def upload_csv(
     file: UploadFile = File(...),
     user_id: str = Depends(get_user_id),
 ):
+    print("UPLOAD HIT", file.filename, user_id)
+
     # 1. validate analysis
     if analysis_key not in ANALYSES:
         raise HTTPException(status_code=400, detail="Unknown analysis")
