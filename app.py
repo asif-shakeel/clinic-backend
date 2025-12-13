@@ -234,3 +234,36 @@ def download_result(
     path = f"results/{job_id}/{filename}"
     return {"url": generate_signed_url(path)}
 
+from analysis_registry import ANALYSES
+
+@app.get("/analyses")
+def list_analyses():
+    """
+    Public, read-only endpoint that exposes
+    available analyses and their file requirements.
+    """
+
+    def normalize(col: str) -> str:
+        return (
+            col.strip()
+               .lower()
+               .replace(" ", "_")
+               .replace("-", "_")
+        )
+
+    out = {}
+
+    for analysis_key, analysis in ANALYSES.items():
+        out[analysis_key] = {
+            "label": analysis["label"],
+            "files": {}
+        }
+
+        for role, cfg in analysis["files"].items():
+            out[analysis_key]["files"][role] = {
+                "required_columns": [
+                    normalize(c) for c in cfg["required_columns"]
+                ]
+            }
+
+    return out

@@ -6,28 +6,26 @@ ANALYSES = {
         "files": {
             "patients": {
                 "required_columns": [
-                    "PatientID",
-                    "zip",
-                    "dob",
-                    "city",
-                    "state",
+                    "Patient ID",
+                    "Insurance",
+                    "DOB",
+                    "City",
+                    "State",
                 ]
             },
             "visits": {
                 "required_columns": [
-                    "patientid",
-                    "visitdate",
-                    "service",
-                   "servicecharge",
-                   "serviceduration",
+                    "Patient ID",
+                    "Visit Date",
+                    "Service Charge",
                 ]
             },
             "metrics": {
                 "required_columns": [
-                    "patientid",
-                    "metricdate",
-                    "painscore",
-                    "mobilityscore",
+                    "Patient ID",
+                    "Metric Date",
+                    "Pain Score",
+                    "Mobility Score",
                 ]
             },
         }
