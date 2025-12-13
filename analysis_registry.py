@@ -1,7 +1,7 @@
 # analysis_registry.py
 
 ANALYSES = {
-    "basic_clinic_analysis": {
+    "basic_clinic": {
         "label": "Basic Clinic Analysis",
         "files": {
             "patients": {
