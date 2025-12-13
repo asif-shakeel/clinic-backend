@@ -10,21 +10,21 @@ def load_data(data_dir):
     visits = pd.read_csv(os.path.join(data_dir, "visits.csv"))
     metrics = pd.read_csv(os.path.join(data_dir, "metrics.csv"))
 
-    visits["VisitDate"] = pd.to_datetime(visits["VisitDate"])
-    metrics["MetricDate"] = pd.to_datetime(metrics["MetricDate"])
-    patients["DOB"] = pd.to_datetime(patients["DOB"])
+    visits["visitdate"] = pd.to_datetime(visits["visitdate"])
+    metrics["metricdate"] = pd.to_datetime(metrics["metricdate"])
+    patients["dob"] = pd.to_datetime(patients["dob"])
 
     return patients, visits, metrics
 
 
 # ---------- MERGE ----------
 def merge_data(patients, visits, metrics):
-    visits_full = visits.merge(patients, on="PatientID", how="left")
+    visits_full = visits.merge(patients, on="patientid", how="left")
 
     full_data = visits_full.merge(
         metrics,
-        left_on=["PatientID", "VisitDate"],
-        right_on=["PatientID", "MetricDate"],
+        left_on=["patientid", "visitdate"],
+        right_on=["patientid", "Metricdate"],
         how="left"
     )
     return full_data
@@ -33,9 +33,9 @@ def merge_data(patients, visits, metrics):
 # ---------- FILTER ----------
 def filter_by_date(df, start_date=None, end_date=None):
     if start_date:
-        df = df[df["VisitDate"] >= pd.to_datetime(start_date)]
+        df = df[df["visitdate"] >= pd.to_datetime(start_date)]
     if end_date:
-        df = df[df["VisitDate"] <= pd.to_datetime(end_date)]
+        df = df[df["visitdate"] <= pd.to_datetime(end_date)]
     return df
 
 
@@ -43,16 +43,16 @@ def filter_by_date(df, start_date=None, end_date=None):
 def compute_aggregates(df):
     return {
         "avg_charge_by_insurance":
-            df.groupby("Insurance")["ServiceCharge"].mean().reset_index(),
+            df.groupby("insurance")["servicecharge"].mean().reset_index(),
 
         "revenue_by_city":
-            df.groupby("City")["ServiceCharge"].sum().reset_index(),
+            df.groupby("City")["servicecharge"].sum().reset_index(),
 
         "avg_pain_by_insurance":
-            df.groupby("Insurance")["PainScore"].mean().reset_index(),
+            df.groupby("insurance")["painscore"].mean().reset_index(),
 
         "visit_counts":
-            df.groupby("PatientID").size().reset_index(name="VisitCount")
+            df.groupby("patientid").size().reset_index(name="visitCount")
     }
 
 
@@ -61,11 +61,11 @@ def run_stats(df):
     stats = {}
 
     stats["pain_mobility_corr"] = (
-        df[["PainScore", "MobilityScore"]].corr()
+        df[["painscore", "mobilityscore"]].corr()
     )
 
-    bluecross = df.loc[df["Insurance"] == "BlueCross", "ServiceCharge"]
-    aetna = df.loc[df["Insurance"] == "Aetna", "ServiceCharge"]
+    bluecross = df.loc[df["insurance"] == "BlueCross", "servicecharge"]
+    aetna = df.loc[df["insurance"] == "Aetna", "servicecharge"]
 
     if len(bluecross) >= 2 and len(aetna) >= 2:
         t_stat, p_value = ttest_ind(bluecross, aetna, equal_var=False)
