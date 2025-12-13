@@ -1,5 +1,4 @@
 import os
-import hashlib
 import pandas as pd
 from scipy.stats import ttest_ind
 
@@ -10,6 +9,7 @@ def load_data(data_dir):
     visits = pd.read_csv(os.path.join(data_dir, "visits.csv"))
     metrics = pd.read_csv(os.path.join(data_dir, "metrics.csv"))
 
+    # Dates (normalized names)
     visits["visitdate"] = pd.to_datetime(visits["visitdate"])
     metrics["metricdate"] = pd.to_datetime(metrics["metricdate"])
     patients["dob"] = pd.to_datetime(patients["dob"])
@@ -24,7 +24,7 @@ def merge_data(patients, visits, metrics):
     full_data = visits_full.merge(
         metrics,
         left_on=["patientid", "visitdate"],
-        right_on=["patientid", "Metricdate"],
+        right_on=["patientid", "metricdate"],
         how="left"
     )
     return full_data
@@ -46,13 +46,13 @@ def compute_aggregates(df):
             df.groupby("insurance")["servicecharge"].mean().reset_index(),
 
         "revenue_by_city":
-            df.groupby("City")["servicecharge"].sum().reset_index(),
+            df.groupby("city")["servicecharge"].sum().reset_index(),
 
         "avg_pain_by_insurance":
             df.groupby("insurance")["painscore"].mean().reset_index(),
 
         "visit_counts":
-            df.groupby("patientid").size().reset_index(name="visitCount")
+            df.groupby("patientid").size().reset_index(name="visitcount"),
     }
 
 
@@ -64,14 +64,14 @@ def run_stats(df):
         df[["painscore", "mobilityscore"]].corr()
     )
 
-    bluecross = df.loc[df["insurance"] == "BlueCross", "servicecharge"]
-    aetna = df.loc[df["insurance"] == "Aetna", "servicecharge"]
+    bluecross = df.loc[df["insurance"] == "bluecross", "servicecharge"]
+    aetna = df.loc[df["insurance"] == "aetna", "servicecharge"]
 
     if len(bluecross) >= 2 and len(aetna) >= 2:
         t_stat, p_value = ttest_ind(bluecross, aetna, equal_var=False)
         stats["charge_ttest"] = {
             "t_stat": float(t_stat),
-            "p_value": float(p_value)
+            "p_value": float(p_value),
         }
     else:
         stats["charge_ttest"] = {
@@ -81,7 +81,6 @@ def run_stats(df):
     return stats
 
 
-
 # ---------- SAVE ----------
 def save_results(results, out_dir):
     os.makedirs(out_dir, exist_ok=True)
@@ -89,7 +88,7 @@ def save_results(results, out_dir):
         df.to_csv(os.path.join(out_dir, f"{name}.csv"), index=False)
 
 
-# ---------- MAIN ENTRY ----------
+# ---------- MAIN ----------
 def run_analysis(data_dir, out_dir, start_date=None, end_date=None):
     patients, visits, metrics = load_data(data_dir)
     full_data = merge_data(patients, visits, metrics)
@@ -102,5 +101,5 @@ def run_analysis(data_dir, out_dir, start_date=None, end_date=None):
 
     return {
         "stats": stats,
-        "rows_analyzed": len(full_data)
+        "rows_analyzed": len(full_data),
     }
