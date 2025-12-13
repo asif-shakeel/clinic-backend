@@ -12,6 +12,7 @@ from datetime import datetime
 from fastapi import HTTPException
 import pandas as pd
 from analysis_registry import ANALYSES
+from fastapi import Body
 
 
 
@@ -84,6 +85,13 @@ def upload_csv(
     remote_path = f"raw/{user_id}/{analysis_key}/{file_role}.csv"
     upload_file(tmp_path, remote_path)
 
+    supabase.table("user_files").insert({
+        "user_id": user_id,
+        "filename": file.filename,
+        "storage_path": remote_path,
+        "detected_columns": list(df.columns),
+    }).execute()
+
     return {
         "status": "uploaded",
         "analysis": analysis_key,
@@ -94,12 +102,24 @@ def upload_csv(
 
 @app.post("/analyze")
 def analyze(
-    analysis_key: str,
+    analysis_key: str = None,
     start_date: str = None,
     end_date: str = None,
+    body: dict = Body(default=None),
     user_id: str = Depends(get_user_id),
 ):
+    # Support both query params (old) and JSON body (new)
+    if body:
+        analysis_key = body.get("analysis_key", analysis_key)
+        start_date = body.get("start_date", start_date)
+        end_date = body.get("end_date", end_date)
+        selected_files = body.get("files")
+    else:
+        selected_files = None
 
+    if not analysis_key or analysis_key not in ANALYSES:
+        raise HTTPException(status_code=400, detail="Unknown analysis")
+    
     # 1. create job
     job = supabase.table("analysis_jobs").insert({
         "user_id": user_id,
@@ -110,8 +130,7 @@ def analyze(
 
     job_id = job.data[0]["id"]
 
-    if analysis_key not in ANALYSES:
-        raise HTTPException(status_code=400, detail="Unknown analysis")
+
 
     analysis = ANALYSES[analysis_key]
 
@@ -123,38 +142,37 @@ def analyze(
         # ensure inputs exist locally
         os.makedirs(DATA_DIR, exist_ok=True)
 
-        required_files = [
-            f"{role}.csv"
-            for role in ANALYSES[analysis_key]["files"].keys()
-        ]
+        if selected_files:
+            # NEW: download by file IDs
+            for role, file_id in selected_files.items():
+                row = (
+                    supabase
+                    .table("user_files")
+                    .select("storage_path")
+                    .eq("id", file_id)
+                    .eq("user_id", user_id)
+                    .single()
+                    .execute()
+                )
 
+                if not row.data:
+                    raise HTTPException(400, f"Invalid file for role {role}")
 
-        if not required_files:
-            raise HTTPException(status_code=400, detail="Unknown analysis type")
+                for f in os.listdir(DATA_DIR):
+                    os.remove(os.path.join(DATA_DIR, f))
 
-        missing = []
-
-        for fname in required_files:
-            try:
+                download_file(
+                    row.data["storage_path"],
+                    os.path.join(DATA_DIR, f"{role}.csv"),
+                )
+        else:
+            # OLD behavior (unchanged)
+            for role in ANALYSES[analysis_key]["files"].keys():
+                fname = f"{role}.csv"
                 download_file(
                     f"raw/{user_id}/{analysis_key}/{fname}",
                     os.path.join(DATA_DIR, fname),
                 )
-            except Exception:
-                missing.append(fname)
-
-        if missing:
-            supabase.table("analysis_jobs").update({
-                "status": "failed",
-                "error": f"Missing required files: {', '.join(missing)}",
-                "finished_at": datetime.utcnow().isoformat(),
-            }).eq("id", job_id).execute()
-
-            return {
-                "job_id": job_id,
-                "error": f"Missing required files: {', '.join(missing)}",
-            }
-
 
 
         # run analysis ONCE
@@ -267,3 +285,15 @@ def list_analyses():
             }
 
     return out
+@app.get("/files")
+def list_files(user_id: str = Depends(get_user_id)):
+    res = (
+        supabase
+        .table("user_files")
+        .select("id, filename, detected_columns, uploaded_at")
+        .eq("user_id", user_id)
+        .order("uploaded_at", desc=True)
+        .limit(10)
+        .execute()
+    )
+    return res.data
