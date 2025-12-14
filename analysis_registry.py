@@ -23,6 +23,11 @@ ANALYSES = {
                     "patient_id", "insurance", "dob"
                 ]
             },
+                        "visits": {
+                "required_columns": [
+                    "patient_id", "visit_date", "service_charge"
+                ]
+            },
             "metrics": {
                 "required_columns": [
                     "patient_id", "metric_date",

@@ -82,7 +82,11 @@ def run_stats(df):
 
 def run_basic_clinic(data_dir, out_dir, start_date=None, end_date=None):
     patients, visits = load_basic_clinic_data(data_dir)
-    full = merge_data(patients, visits, metrics)
+    full = patients.merge(
+        visits,
+        on="patient_id",
+        how="inner"
+    )
     full = filter_by_date(full, start_date, end_date)
 
     results = {
