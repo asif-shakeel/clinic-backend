@@ -80,6 +80,38 @@ def run_stats(df):
 
     return stats
 
+def run_basic_clinic(data_dir, out_dir, start_date=None, end_date=None):
+    patients, visits, metrics = load_data(data_dir)
+    full = merge_data(patients, visits, metrics)
+    full = filter_by_date(full, start_date, end_date)
+
+    results = {
+        "avg_charge_by_insurance":
+            full.groupby("insurance")["servicecharge"].mean().reset_index(),
+
+        "revenue_by_city":
+            full.groupby("city")["servicecharge"].sum().reset_index(),
+
+        "visit_counts":
+            full.groupby("patientid").size().reset_index(name="visit_count"),
+    }
+
+    save_results(results, out_dir)
+
+def run_clinic_outcomes(data_dir, out_dir, start_date=None, end_date=None):
+    patients, visits, metrics = load_data(data_dir)
+    full = merge_data(patients, visits, metrics)
+    full = filter_by_date(full, start_date, end_date)
+
+    results = {
+        "avg_pain_by_insurance":
+            full.groupby("insurance")["painscore"].mean().reset_index(),
+
+        "pain_mobility_corr":
+            full[["painscore", "mobilityscore"]].corr().reset_index(),
+    }
+
+    save_results(results, out_dir)
 
 # ---------- SAVE ----------
 def save_results(results, out_dir):
@@ -89,17 +121,11 @@ def save_results(results, out_dir):
 
 
 # ---------- MAIN ----------
-def run_analysis(data_dir, out_dir, start_date=None, end_date=None):
-    patients, visits, metrics = load_data(data_dir)
-    full_data = merge_data(patients, visits, metrics)
-    full_data = filter_by_date(full_data, start_date, end_date)
+def run_analysis(data_dir, out_dir, analysis_key, start_date=None, end_date=None):
+    if analysis_key == "basic_clinic":
+        return run_basic_clinic(data_dir, out_dir, start_date, end_date)
 
-    aggregates = compute_aggregates(full_data)
-    stats = run_stats(full_data)
+    if analysis_key == "clinic_outcomes":
+        return run_clinic_outcomes(data_dir, out_dir, start_date, end_date)
 
-    save_results(aggregates, out_dir)
-
-    return {
-        "stats": stats,
-        "rows_analyzed": len(full_data),
-    }
+    raise ValueError("Unknown analysis")
