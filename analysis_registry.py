@@ -39,8 +39,10 @@ ANALYSES = {
             },
             "metrics": {
                 "required_columns": [
-                    "patient_id", "metric_date",
-                    "pain_score", "mobility_score"
+                    "patient_id",
+                    "metric_date",
+                    "pain_score",
+                    "mobility_score"
                 ]
             },
         },
