@@ -90,12 +90,6 @@ def upload_csv(
     remote_path = f"raw/{user_id}/{analysis_key}/{file_role}.csv"
     upload_file(tmp_path, remote_path)
 
-    supabase.table("user_files").insert({
-        "user_id": user_id,
-        "filename": file.filename,
-        "storage_path": remote_path,
-        "detected_columns": list(df.columns),
-    }).execute()
 
     result = supabase.table("user_files").insert({
         "user_id": user_id,
