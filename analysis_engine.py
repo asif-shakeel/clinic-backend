@@ -121,11 +121,12 @@ def save_results(results, out_dir):
 
 
 # ---------- MAIN ----------
-def run_analysis(data_dir, out_dir, analysis_key, start_date=None, end_date=None):
+def run_analysis(analysis_key, data_dir, out_dir, start_date=None, end_date=None):
     if analysis_key == "basic_clinic":
         return run_basic_clinic(data_dir, out_dir, start_date, end_date)
 
     if analysis_key == "clinic_outcomes":
         return run_clinic_outcomes(data_dir, out_dir, start_date, end_date)
 
-    raise ValueError("Unknown analysis")
+    raise ValueError(f"Unknown analysis: {analysis_key}")
+
