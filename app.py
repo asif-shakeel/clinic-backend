@@ -192,13 +192,24 @@ def analyze(
 
 
         # run analysis ONCE
-        run_analysis(
-            analysis_key,
-            DATA_DIR,
-            OUT_DIR,
-            start_date=start_date,
-            end_date=end_date,
-        )
+        try:
+            run_analysis(
+                analysis_key,
+                DATA_DIR,
+                OUT_DIR,
+                start_date=start_date,
+                end_date=end_date,
+            )
+
+        except Exception as e:
+            supabase.table("analysis_jobs").update({
+                "status": "failed",
+                "error": str(e),
+                "finished_at": datetime.utcnow().isoformat(),
+            }).eq("id", job_id).execute()
+
+            raise HTTPException(status_code=400, detail=str(e))
+
 
 
         # upload results
