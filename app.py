@@ -3,7 +3,7 @@ import shutil
 from fastapi import FastAPI, UploadFile, File
 
 from analysis_engine import run_analysis
-from b2_storage import upload_file, download_file, generate_signed_url
+from b2_storage import upload_file, download_file, generate_signed_url, delete_file
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Depends
 from auth import get_user_id
@@ -381,7 +381,10 @@ def upload_file_generic(
     return {"status": "uploaded"}
 
 @app.delete("/files/{file_id}")
-def delete_file(file_id: str, user_id: str = Depends(get_user_id)):
+def delete_file_endpoint(
+    file_id: str,
+    user_id: str = Depends(get_user_id),
+):
     row = (
         supabase
         .table("user_files")
@@ -395,11 +398,8 @@ def delete_file(file_id: str, user_id: str = Depends(get_user_id)):
     if not row.data:
         raise HTTPException(status_code=404)
 
-    # delete from storage
-    from b2_storage import delete_file
     delete_file(row.data["storage_path"])
 
-    # delete from db
     supabase.table("user_files").delete().eq("id", file_id).execute()
 
     return {"status": "deleted"}

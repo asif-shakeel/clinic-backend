@@ -33,3 +33,6 @@ def generate_signed_url(object_key: str, expires_seconds: int = 3600) -> str:
         },
         ExpiresIn=expires_seconds,
     )
+
+def delete_file(remote_path):
+    s3.delete_object(Bucket=BUCKET, Key=remote_path)
