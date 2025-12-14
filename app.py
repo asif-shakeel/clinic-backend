@@ -189,6 +189,9 @@ def analyze(
                     os.path.join(DATA_DIR, fname),
                 )
 
+        print("ANALYZE analysis_key =", analysis_key)
+        print("AVAILABLE analyses =", list(ANALYSES.keys()))
+
 
         # run analysis ONCE
         run_analysis(
