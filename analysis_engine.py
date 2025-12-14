@@ -1,19 +1,25 @@
 import os
 import pandas as pd
 from scipy.stats import ttest_ind
+from column_normalization import normalize_columns
 
 
 # ---------- LOAD ----------
-def load_basic_clinic_data(data_dir):
-    patients = pd.read_csv(os.path.join(data_dir, "patients.csv"))
-    visits = pd.read_csv(os.path.join(data_dir, "visits.csv"))
+def load_basic_clinic(data_dir):
+    patients = normalize_columns(
+        pd.read_csv(os.path.join(data_dir, "patients.csv"))
+    )
+    visits = normalize_columns(
+        pd.read_csv(os.path.join(data_dir, "visits.csv"))
+    )
     return patients, visits
 
 
-def load_clinic_outcomes_data(data_dir):
-    patients = pd.read_csv(os.path.join(data_dir, "patients.csv"))
-    visits = pd.read_csv(os.path.join(data_dir, "visits.csv"))
-    metrics = pd.read_csv(os.path.join(data_dir, "metrics.csv"))
+
+def load_clinic_outcomes(data_dir):
+    patients = normalize_columns(pd.read_csv(os.path.join(data_dir, "patients.csv")))
+    visits = normalize_columns(pd.read_csv(os.path.join(data_dir, "visits.csv")))
+    metrics = normalize_columns(pd.read_csv(os.path.join(data_dir, "metrics.csv")))
     return patients, visits, metrics
 
 
@@ -81,7 +87,7 @@ def run_stats(df):
     return stats
 
 def run_basic_clinic(data_dir, out_dir, start_date=None, end_date=None):
-    patients, visits = load_basic_clinic_data(data_dir)
+    patients, visits = load_basic_clinic(data_dir)
     full = patients.merge(
         visits,
         on="patient_id",
@@ -103,7 +109,7 @@ def run_basic_clinic(data_dir, out_dir, start_date=None, end_date=None):
     save_results(results, out_dir)
 
 def run_clinic_outcomes(data_dir, out_dir, start_date=None, end_date=None):
-    patients, visits, metrics = load_clinic_outcomes_data(data_dir)
+    patients, visits, metrics = load_clinic_outcomes(data_dir)
     full = merge_data(patients, visits, metrics)
     full = filter_by_date(full, start_date, end_date)
 
