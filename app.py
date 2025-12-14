@@ -157,44 +157,38 @@ def analyze(
         # ensure inputs exist locally
         os.makedirs(DATA_DIR, exist_ok=True)
 
-        if selected_files is not None:
-            # NEW: download explicitly selected files
-            for role, file_id in selected_files.items():
-                if not file_id:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"No file selected for role '{role}'"
-                    )
+        required_roles = set(ANALYSES[analysis_key]["files"].keys())
 
-                row = (
-                    supabase
-                    .table("user_files")
-                    .select("storage_path")
-                    .eq("id", file_id)
-                    .eq("user_id", user_id)
-                    .single()
-                    .execute()
-                )
+        if not selected_files:
+            raise HTTPException(400, "No files selected")
 
-                if not row.data:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Invalid file for role '{role}'"
-                    )
+        missing_roles = [
+            r for r in required_roles
+            if r not in selected_files or not selected_files[r]
+        ]
 
-                download_file(
-                    row.data["storage_path"],
-                    os.path.join(DATA_DIR, f"{role}.csv"),
-                )
-        else:
-            # legacy fallback (can be deleted later)
-            for role in ANALYSES[analysis_key]["files"].keys():
-                fname = f"{role}.csv"
-                download_file(
-                    f"raw/{user_id}/{analysis_key}/{fname}",
-                    os.path.join(DATA_DIR, fname),
-                )
+        if missing_roles:
+            raise HTTPException(
+                400,
+                f"Missing files for roles: {missing_roles}"
+            )
 
+        # now download files (guaranteed to exist)
+        for role, file_id in selected_files.items():
+            row = (
+                supabase
+                .table("user_files")
+                .select("storage_path")
+                .eq("id", file_id)
+                .eq("user_id", user_id)
+                .single()
+                .execute()
+            )
+
+            download_file(
+                row.data["storage_path"],
+                os.path.join(DATA_DIR, f"{role}.csv"),
+            )
 
 
         # run analysis ONCE
