@@ -90,7 +90,7 @@ def run_basic_clinic(data_dir, out_dir, start_date=None, end_date=None):
     patients, visits = load_basic_clinic(data_dir)
     full = patients.merge(
         visits,
-        on="patient_id",
+        on="patientid",
         how="inner"
     )
     full = filter_by_date(full, start_date, end_date)
