@@ -379,3 +379,27 @@ def upload_file_generic(
     }).execute()
 
     return {"status": "uploaded"}
+
+@app.delete("/files/{file_id}")
+def delete_file(file_id: str, user_id: str = Depends(get_user_id)):
+    row = (
+        supabase
+        .table("user_files")
+        .select("storage_path")
+        .eq("id", file_id)
+        .eq("user_id", user_id)
+        .single()
+        .execute()
+    )
+
+    if not row.data:
+        raise HTTPException(status_code=404)
+
+    # delete from storage
+    from b2_storage import delete_file
+    delete_file(row.data["storage_path"])
+
+    # delete from db
+    supabase.table("user_files").delete().eq("id", file_id).execute()
+
+    return {"status": "deleted"}
