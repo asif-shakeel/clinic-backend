@@ -157,9 +157,15 @@ def analyze(
         # ensure inputs exist locally
         os.makedirs(DATA_DIR, exist_ok=True)
 
-        if selected_files:
-            # NEW: download by file IDs
+        if selected_files is not None:
+            # NEW: download explicitly selected files
             for role, file_id in selected_files.items():
+                if not file_id:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"No file selected for role '{role}'"
+                    )
+
                 row = (
                     supabase
                     .table("user_files")
@@ -171,17 +177,17 @@ def analyze(
                 )
 
                 if not row.data:
-                    raise HTTPException(400, f"Invalid file for role {role}")
-
-                for f in os.listdir(DATA_DIR):
-                    os.remove(os.path.join(DATA_DIR, f))
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Invalid file for role '{role}'"
+                    )
 
                 download_file(
                     row.data["storage_path"],
                     os.path.join(DATA_DIR, f"{role}.csv"),
                 )
         else:
-            # OLD behavior (unchanged)
+            # legacy fallback (can be deleted later)
             for role in ANALYSES[analysis_key]["files"].keys():
                 fname = f"{role}.csv"
                 download_file(
@@ -189,8 +195,6 @@ def analyze(
                     os.path.join(DATA_DIR, fname),
                 )
 
-        print("ANALYZE analysis_key =", analysis_key)
-        print("AVAILABLE analyses =", list(ANALYSES.keys()))
 
 
         # run analysis ONCE
