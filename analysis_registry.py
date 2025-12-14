@@ -2,8 +2,9 @@ ANALYSES = {
     "basic_clinic": {
         "label": "Basic Clinic Analysis",
         "outputs": [
-            "Patient counts by insurance",
-            "Average service charge"
+            "Average service charge by insurance",
+            "Revenue by city",
+            "Visit counts per patient"
         ],
         "files": {
             "patients": {
@@ -22,9 +23,8 @@ ANALYSES = {
     "clinic_outcomes": {
         "label": "Clinic Outcomes Analysis",
         "outputs": [
-            "Outcome trends over time",
-            "Pain vs mobility correlation",
-            "Service charge by outcome"
+            "Average pain score by insurance",
+            "Pain vs mobility correlation"
         ],
         "files": {
             "patients": {
