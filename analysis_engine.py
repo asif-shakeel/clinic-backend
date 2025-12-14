@@ -37,12 +37,16 @@ def merge_data(patients, visits, metrics):
 
 
 # ---------- FILTER ----------
-def filter_by_date(df, start_date=None, end_date=None):
+def filter_by_date(df, start_date, end_date):
     if start_date:
+        df["visitdate"] = pd.to_datetime(df["visitdate"], errors="coerce")
         df = df[df["visitdate"] >= pd.to_datetime(start_date)]
+
     if end_date:
         df = df[df["visitdate"] <= pd.to_datetime(end_date)]
+
     return df
+
 
 
 # ---------- AGGREGATES ----------
