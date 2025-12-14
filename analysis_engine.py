@@ -4,16 +4,16 @@ from scipy.stats import ttest_ind
 
 
 # ---------- LOAD ----------
-def load_data(data_dir):
+def load_basic_clinic_data(data_dir):
+    patients = pd.read_csv(os.path.join(data_dir, "patients.csv"))
+    visits = pd.read_csv(os.path.join(data_dir, "visits.csv"))
+    return patients, visits
+
+
+def load_clinic_outcomes_data(data_dir):
     patients = pd.read_csv(os.path.join(data_dir, "patients.csv"))
     visits = pd.read_csv(os.path.join(data_dir, "visits.csv"))
     metrics = pd.read_csv(os.path.join(data_dir, "metrics.csv"))
-
-    # Dates (normalized names)
-    visits["visitdate"] = pd.to_datetime(visits["visitdate"])
-    metrics["metricdate"] = pd.to_datetime(metrics["metricdate"])
-    patients["dob"] = pd.to_datetime(patients["dob"])
-
     return patients, visits, metrics
 
 
@@ -81,7 +81,7 @@ def run_stats(df):
     return stats
 
 def run_basic_clinic(data_dir, out_dir, start_date=None, end_date=None):
-    patients, visits, metrics = load_data(data_dir)
+    patients, visits = load_basic_clinic_data(data_dir)
     full = merge_data(patients, visits, metrics)
     full = filter_by_date(full, start_date, end_date)
 
@@ -99,7 +99,7 @@ def run_basic_clinic(data_dir, out_dir, start_date=None, end_date=None):
     save_results(results, out_dir)
 
 def run_clinic_outcomes(data_dir, out_dir, start_date=None, end_date=None):
-    patients, visits, metrics = load_data(data_dir)
+    patients, visits, metrics = load_clinic_outcomes_data(data_dir)
     full = merge_data(patients, visits, metrics)
     full = filter_by_date(full, start_date, end_date)
 
