@@ -13,6 +13,9 @@ from fastapi import HTTPException
 import pandas as pd
 from analysis_registry import ANALYSES
 from fastapi import Body
+from column_normalization import normalize_list, normalize_columns
+
+
 
 
 
@@ -190,6 +193,31 @@ def analyze(
                 os.path.join(DATA_DIR, f"{role}.csv"),
             )
 
+        analysis = ANALYSES[analysis_key]
+
+        for role, cfg in analysis["files"].items():
+            path = os.path.join(DATA_DIR, f"{role}.csv")
+
+            if not os.path.exists(path):
+                raise HTTPException(400, f"Missing file for role: {role}")
+
+            df = pd.read_csv(path)
+            df = normalize_columns(df)
+
+            required = normalize_list(cfg["required_columns"])
+            missing = [c for c in required if c not in df.columns]
+
+            if missing:
+                supabase.table("analysis_jobs").update({
+                    "status": "failed",
+                    "error": f"{role} missing columns: {missing}",
+                    "finished_at": datetime.utcnow().isoformat(),
+                }).eq("id", job_id).execute()
+
+                return {
+                    "job_id": job_id,
+                    "error": f"{role} missing columns: {missing}",
+                }
 
         # run analysis ONCE
         try:
