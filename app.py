@@ -325,6 +325,7 @@ def list_analyses():
     for analysis_key, analysis in ANALYSES.items():
         out[analysis_key] = {
             "label": analysis["label"],
+            "outputs": analysis.get("outputs", []),
             "files": {}
         }
 
@@ -334,6 +335,7 @@ def list_analyses():
                     normalize(c) for c in cfg["required_columns"]
                 ]
             }
+
 
     return out
 @app.get("/files")
