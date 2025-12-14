@@ -192,11 +192,13 @@ def analyze(
 
         # run analysis ONCE
         run_analysis(
+            analysis_key,
             DATA_DIR,
             OUT_DIR,
             start_date=start_date,
             end_date=end_date,
         )
+
 
         # upload results
         job_prefix = f"results/{job_id}"
